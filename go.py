@@ -15,6 +15,7 @@ class App():
         """
         menubar = Menu(master)
         filemenu = Menu(menubar,tearoff=0)
+        filemenu.add_command(label="New",command=self.reset)
         filemenu.add_command(label="Quit",command=self.quit)
         playermenu = Menu(menubar,tearoff=0)
         playermenu.add_command(label="Pass",command=self.playerpass)
@@ -188,7 +189,14 @@ class App():
         return self.hasLiberties(x-1,y,turn) or self.hasLiberties(x+1,y,turn) or self.hasLiberties(x,y-1,turn) or self.hasLiberties(x,y+1,turn)
 
     def click(self,event):
-        """Handles normal play"""
+        """
+        Handles normal play
+        Verifies that play is allowable
+        Makes any possible captures
+        Checks for Ko rule. This is not done in ValidPlay(), as we've got to make captures first, and
+        there's no real reason to do that twice.
+        Finish by redrawing board
+        """
         self.status.config(text="")
 
         #figure out what square we clicked on
@@ -204,9 +212,10 @@ class App():
         self.state[stateX][stateY] = 'b' if self.turn else 'w'
 
         #check for captures
-        self.captureHelper(stateX,stateY,self.turn)
+        #store existing prisoners in case we need to roll back
         preb = self.bPrisoners
         prew = self.wPrisoners
+        self.captureHelper(stateX,stateY,self.turn)
 
         #Check for ko
         if self.state == self.stateHistory[len(self.stateHistory)-2]['state']:
@@ -216,25 +225,30 @@ class App():
             self.score.config(text="B: %d W: %d" % (self.bPrisoners, self.wPrisoners))
             self.status.config(text="That would be a violation of Ko")
             return False
+
         self.turn = not self.turn
         self.stateHistory.append({'state':copy.deepcopy(self.state),'pass':self.passCount,\
                                       'wPrisoners':self.wPrisoners,'bPrisoners':self.bPrisoners,'turn':self.turn})
         #reset passcount, as they'll need to pass twice in a row in order to end
         self.passCount=0
+        
+        #redraw board
         self.resize()
         
     def captureHelper(self,clickedX,clickedY,turn):
-        #Checks to see if turn is making a capture through this play
+        """ 
+        Attempts to capture each adjacent square 
+        Consists of four if statements, each of the form:
+        if you can do a capture, store the points, else roll back the capture
+        """
+
         capped = False
-        if turn:
-            target = 'w'
-        else:
-            target = 'b'
+        target = 'w' if turn else 'b'
+
         backupState = copy.deepcopy(self.state)
         self.curCaps =0
 
-        if (1<=clickedX<19) and (0<=clickedY<19) and self.state[clickedX-1][clickedY] == target \
-                and self.capture(clickedX-1,clickedY):
+        if (1<=clickedX<19) and (0<=clickedY<19) and self.state[clickedX-1][clickedY] == target and self.capture(clickedX-1,clickedY):
             capped = True
             if target =='w':
                 self.bPrisoners+=self.curCaps
@@ -246,8 +260,7 @@ class App():
 
         backupState = copy.deepcopy(self.state)
 
-        if (0<=clickedX<18) and (0<=clickedY<19) and self.state[clickedX+1][clickedY] == target \
-                and self.capture(clickedX+1,clickedY):
+        if (0<=clickedX<18) and (0<=clickedY<19) and self.state[clickedX+1][clickedY] == target and self.capture(clickedX+1,clickedY):
             capped = True
             if target=='w':
                 self.bPrisoners+=self.curCaps
@@ -258,8 +271,7 @@ class App():
         self.curCaps =0
         backupState = copy.deepcopy(self.state)
 
-        if (0<=clickedX<19) and (1<=clickedY<19) and self.state[clickedX][clickedY-1] == target \
-                and self.capture(clickedX,clickedY-1):
+        if (0<=clickedX<19) and (1<=clickedY<19) and self.state[clickedX][clickedY-1] == target and self.capture(clickedX,clickedY-1):
             capped = True
             if target=='w':
                 self.bPrisoners+=self.curCaps
@@ -270,8 +282,7 @@ class App():
         self.curCaps =0
         backupState = copy.deepcopy(self.state)
 
-        if (0<=clickedX<19) and (0<=clickedY<18) and self.state[clickedX][clickedY+1] == target \
-                and self.capture(clickedX,clickedY+1):
+        if (0<=clickedX<19) and (0<=clickedY<18) and self.state[clickedX][clickedY+1] == target and self.capture(clickedX,clickedY+1):
             capped = True
             if target=='w':
                 self.bPrisoners+=self.curCaps
@@ -291,21 +302,22 @@ class App():
 
 
     def capture(self,x,y):
-        if self.turn:
-            ourColor = 'b'
-        else:
-            ourColor = 'w'
+        """ 
+        Mark all captured pieces as 'c'. Each time a c is created, self.curCaps++ and try to capture adjacent squares
+        """
+        ourColor = 'b' if self.turn else 'w'
+
         if not (0<=x<19) or not (0<=y<19):
             return True
         elif self.state[x][y] == 'E':
             return False
-        #we've eliminated the possibility of us calling this function on our own color when adjascent to 
+        #we've eliminated the possibility of us calling this function on our own color when adjacent to
         #something we clicked on (see above) so if we find ourselves, then we must have reached the edge of a group
         elif self.state[x][y] == ourColor:
             return True
         elif self.state[x][y] == 'c':
             return True
-        #Presumibly the only other option is for us to be on the enemy's square. Try marking it dead.
+        #The only other option is for us to be on the enemy's square. Try marking it dead.
         self.state[x][y] = 'c'
         self.curCaps+=1
         if not self.capture(x-1,y):
@@ -319,6 +331,9 @@ class App():
         return True
         
     def playerpass(self):
+        """
+        Allows a player to pass. If both players pass, ends the game
+        """
         if self.passCount == 0:
             self.passCount+=1
             if self.turn:
@@ -331,10 +346,12 @@ class App():
             self.findscore()
 
     def quit(self):
+        """ Destorys the root window, and terminates the program """
         global root
         root.destroy()
 
     def reset(self):
+        """ Resets the program, giving us a new game """
         self.status.config(text="")
         self.turn = True
         self.passCount = 0
@@ -347,22 +364,29 @@ class App():
             for y in xrange(19):
                 self.state[x].append("E")
         self.stateHistory = []
-        self.stateHistory.append({'state':copy.deepcopy(self.state),'pass':self.passCount,\
-                                      'wPrisoners':self.wPrisoners,'bPrisoners':self.bPrisoners,'turn':self.turn})
+        self.stateHistory.append({'state':copy.deepcopy(self.state),'pass':self.passCount,'wPrisoners':self.wPrisoners,'bPrisoners':self.bPrisoners,'turn':self.turn})
         self.resize()
-        self.top.destroy()
+        #Error generated if user calls redo from the menu
+        try:
+            self.top.destroy()
+        except AttributeError:
+            pass
 
-    #Scoring function
     def findscore(self):
-        #See if there's more than one piece on the board
-        #otherwise when we look for points, we'll automatically award all points to black
-        #if no one else has played, or if there's only one piece on the board, we'll award to that piece
+        """ 
+        Scores the game and creates a topLevel window to notify players of score
+        
+        First checks that there's more than one piece on the board, to avoid awarding all points to black (the first player)
+        Then tries to fill in each empty space with p's by calling checkScore() on those coordinates.
+        After checkScore() has returned, converts p's to the capital version of the point's owner, so that we won't call checkScore()
+        multiple times for each area we score
+        Finally counts all the capital letters (points) and creates a TopLevel window for the player to see
+        """
         anything = 0
         for x in xrange(19):
             for y in xrange(19):
                 if self.state[x][y] != 'E':
-                    anything+=1
-            
+                    anything+=1    
         for x in xrange(19):
             for y in xrange(19):
                 if self.state[x][y] != 'E':
@@ -373,7 +397,9 @@ class App():
                     #then it was all neutral, so restore the backup to get rid of p's
                     self.state = copy.deepcopy(backup)
                 else:
-                    self.printBoard()
+                    #self.printBoard()
+                    #go through board, filling in p's with the capital letter of the point's owner
+                    #we'll count these later
                     for a in xrange(19):
                         for b in xrange(19):
                             if self.lastfound == 'w':
@@ -412,6 +438,10 @@ class App():
         resetB.pack(side=RIGHT)
 
     def checkScore(self,x,y):
+        """
+        Searches x,y to fill all adjacent squares with p's. Returns false if it finds a place where black
+        and white both border empty squares (that territory should be neutral and not scored)
+        """
         if not (0<=x<19) or not (0<=y<19):
             return True
         if self.state[x][y] == 'p':
