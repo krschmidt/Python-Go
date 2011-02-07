@@ -8,6 +8,11 @@ import copy
 
 class App():
     def __init__(self,master):
+        """
+        Creates the initial window. Note that the board isn't created here,
+        instead that happens in resize(), which is called any time the window
+        size changes (including it's initial creation)
+        """
         menubar = Menu(master)
         filemenu = Menu(menubar,tearoff=0)
         filemenu.add_command(label="Quit",command=self.quit)
@@ -17,6 +22,7 @@ class App():
         menubar.add_cascade(label="File",menu=filemenu)
         menubar.add_cascade(label="Player",menu=playermenu)
         master.config(menu=menubar)        
+
         self.statusbar = Frame(master)
         self.statusbar.pack(side=BOTTOM, fill=X)
         self.score = Label(self.statusbar,text="B: 0 W: 0")
@@ -26,10 +32,8 @@ class App():
         self.c=Canvas(master,width=570,height=570)
         self.c.pack(side=TOP,fill=BOTH,expand=YES)
 
-        #Draw our board
-        #This is done in the resize method, which gets called automatically on construction
         self.c.bind('<Configure>',self.resize)
-        #Set up possible inputs
+
         self.c.bind('<Button-1>',self.click)
         self.c.bind('<Button-3>',self.undo)
 
@@ -45,46 +49,37 @@ class App():
             self.state.append([])
             for y in xrange(19):
                 self.state[x].append("E")
+
+        #Used for Undo
         self.stateHistory = []
-        self.stateHistory.append({'state':copy.deepcopy(self.state),'pass':self.passCount,\
-                                      'wPrisoners':self.wPrisoners,'bPrisoners':self.bPrisoners,'turn':self.turn})
+        self.stateHistory.append({'state':copy.deepcopy(self.state),
+                                  'pass':self.passCount, 
+                                  'wPrisoners':self.wPrisoners,
+                                  'bPrisoners':self.bPrisoners,
+                                  'turn':self.turn})
 
     def printBoard(self,state=None):
+        """ 
+        Helper function to print board state to console, not used in normal play 
+        
+        Note the default assignment of state to None. This is done so that
+        we could potentially use this function to print a board other than this one.
+        You can't simply use state=self.state, as self isn't available yet.
+        """
         if state == None:
             state = self.state
         for x in xrange(19):
             for y in xrange(19):
-                print state[x][y],
+                print state[y][x],
             print
         print
 
-    def validPlay(self,x,y):
-        if self.turn:
-            ourColor = 'b'
-        else:
-            ourColor = 'w'
-        if x>0 and self.state[x-1][y]=="E":
-            return True
-        if x<18 and self.state[x+1][y]=="E":
-            return True
-        if y>0 and self.state[x][y-1]=="E":
-            return True
-        if y<18 and self.state[x][y+1]=="E":
-            return True
-        # try to capture our play. If it caputures, we're playing into suicide
-        # so return false
-        backup = copy.deepcopy(self.state)
-        self.state[x][y] == ourColor
-        if not self.captureHelper(x,y,not self.turn):
-            self.state = copy.deepcopy(backup)
-            return True
-        self.state = copy.deepcopy(backup)
-        return False
-
     def resize(self,event=None):
+        """ Create/Resize the Board """
         self.c.delete(ALL)
         w=root.winfo_width()
         h=root.winfo_height()
+
         #Prevents an error - if h or w gets too small, there's an exception raised when we try to pass 0 as a step to xrange
         #42 is pretty arbitrary, but if it's 42x42, you can't really see the pieces anyway...
         if w<42 or h<42:
@@ -112,6 +107,12 @@ class App():
                     self.c.create_oval(self.wf*(x),self.hf*(y),self.wf*(x+1),self.hf*(y+1),fill="white",outline="black")
 
     def undo(self,event=None):
+        """ 
+        Undo most recent move by popping last player's state and restoring it
+        Resize (redraw) the board
+
+        event defaults to None so that this function can be used either with the right click event or with the undo menu item
+        """
         if len(self.stateHistory) <= 1:
             self.status.config(text="You can't undo! There's nothing on the board!")
             return
@@ -125,29 +126,88 @@ class App():
         self.bPrisoners = last['bPrisoners']
         self.score.config(text="B: %d W: %d" % (self.bPrisoners, self.wPrisoners))
         self.resize()
+    def validPlay(self,x,y):
+        """ 
+        Determines if play is valid this way:
+        if space != empty, disallow play
+        if neighbor == empty, allow play
+        if we can capture a neighbor, allow play
+        if our play leaves us with any liberties, allow play
+        else restore board state and return False
+        """
+        ourColor = 'b' if self.turn else 'w'
+
+        if self.state[x][y] != "E":
+            self.status.config(text="You need to play on an empty square")
+            return False
+
+        if x>0 and self.state[x-1][y]=="E":
+            return True
+        if x<18 and self.state[x+1][y]=="E":
+            return True
+        if y>0 and self.state[x][y-1]=="E":
+            return True
+        if y<18 and self.state[x][y+1]=="E":
+            return True
+
+        #assume we're going to make the play
+        backup = copy.deepcopy(self.state)
+        self.state[x][y] = ourColor
+
+        #can we make a capture at this play? if yes, allow
+        if self.captureHelper(x,y,self.turn):
+            self.state = copy.deepcopy(backup)
+            return True
+
+        #does our group have any liberties? if yes, allow
+        if self.hasLiberties(x,y,self.turn):
+            self.state = copy.deepcopy(backup)
+            return True
+        
+        self.status.config(text="That's playing into suicide!")
+        self.state = copy.deepcopy(backup)
+        return False
+
+    def hasLiberties(self,x,y,turn):
+        """
+        Checks if a group at x,y has any liberties (open spaces).
+        Because it marks places it's already been as the enemy, undo needs to be called after this function finishes
+        """
+        ourColor = 'b' if turn else 'w'
+
+        if x<0 or x>18 or y<0 or y>18:
+            return False
+        if self.state[x][y] == "E":
+            return True
+        if self.state[x][y] != ourColor:
+            return False
+        #mark ourselves as the enemy, so that we don't recurse forever
+        #this change must be reverted outside this function
+        self.state[x][y] = 'w' if turn else 'b'
+
+        return self.hasLiberties(x-1,y,turn) or self.hasLiberties(x+1,y,turn) or self.hasLiberties(x,y-1,turn) or self.hasLiberties(x,y+1,turn)
 
     def click(self,event):
+        """Handles normal play"""
         self.status.config(text="")
 
+        #figure out what square we clicked on
         x = (event.x+self.wf)- event.x%self.wf
         y = (event.y+self.hf)- event.y%self.hf
         stateX = event.x/self.wf
         stateY = event.y/self.hf
-        if self.state[stateX][stateY] != "E":
-            self.status.config(text="You need to play on an empty square")
+        
+        if not self.validPlay(stateX,stateY):
             return False
+
         backup = copy.deepcopy(self.state)
-        if self.turn:
-            self.state[stateX][stateY] = "b"
-        else:
-            self.state[stateX][stateY] = "w"
+        self.state[stateX][stateY] = 'b' if self.turn else 'w'
+
+        #check for captures
+        self.captureHelper(stateX,stateY,self.turn)
         preb = self.bPrisoners
         prew = self.wPrisoners
-        #if can't capture any side and current play isn't valid, then roll back
-        if not self.captureHelper(stateX,stateY,self.turn) and not self.validPlay(stateX,stateY):
-            self.state[stateX][stateY] = "E"
-            self.status.config(text="You're playing into suicide!")
-            return False
+
         #Check for ko
         if self.state == self.stateHistory[len(self.stateHistory)-2]['state']:
             self.state = copy.deepcopy(backup)
@@ -164,6 +224,7 @@ class App():
         self.resize()
         
     def captureHelper(self,clickedX,clickedY,turn):
+        #Checks to see if turn is making a capture through this play
         capped = False
         if turn:
             target = 'w'
