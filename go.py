@@ -1,7 +1,6 @@
 # TODO support board sizes other than 19
 # TODO support marking dead stones after both players pass
 # TODO add handicaps
-# TODO add an indicator of last play
 
 from Tkinter import *
 import copy
@@ -45,6 +44,10 @@ class App():
         self.wPrisoners = 0
         self.bPrisoners = 0
 
+        #used for noting most recent piece
+        self.lastX = None
+        self.lastY = None
+
         self.state = []
         for x in xrange(19):
             self.state.append([])
@@ -57,7 +60,9 @@ class App():
                                   'pass':self.passCount, 
                                   'wPrisoners':self.wPrisoners,
                                   'bPrisoners':self.bPrisoners,
-                                  'turn':self.turn})
+                                  'turn':self.turn,
+                                  'lastX':None,
+                                  'lastY':None})
 
     def printBoard(self,state=None):
         """ 
@@ -81,19 +86,21 @@ class App():
         w=root.winfo_width()
         h=root.winfo_height()
 
-        #Prevents an error - if h or w gets too small, there's an exception raised when we try to pass 0 as a step to xrange
-        #42 is pretty arbitrary, but if it's 42x42, you can't really see the pieces anyway...
+        #Prevents an error - if h or w gets too small, there's an exception
+        #raised when we try to pass 0 as a step to xrange. 42 is pretty 
+        # arbitrary, but if it's 42x42, you can't see the pieces anyway.
         if w<42 or h<42:
             return
         self.wf = w/19
-        self.hf=h/19-1  #-1 lets us fit the statusbar label on the bottom w/o overflowing onto it
+        #-1 lets the statusbar label fit on the bottom w/o overflowing
+        self.hf=h/19-1
         self.c.create_rectangle(0,0,w,h,fill="#f2b06d")
         for x in xrange(self.wf/2,19*self.wf,self.wf):
             self.c.create_line(x,self.hf/2,x,(self.hf/2)+self.hf*18)
         for y in xrange(self.hf/2,19*self.hf,self.hf):
             self.c.create_line(self.wf/2,y,(self.wf/2)+self.wf*18,y)
         #Draw little dots on the powerful plays
-        #TODO this should probably be adjusted so that these dots don't get unnaturally tiny at small screen sizes
+        #TODO Adjusted so the dots don't get too tiny in small windows
         for x in xrange((self.wf/2)+(3*self.wf),19*self.wf,self.wf*6):
             for y in xrange((self.hf/2)+(3*self.hf),19*self.hf,self.hf*6):
                 self.c.create_oval(x-3,y-3,x+3,y+3,fill="black")
@@ -102,10 +109,22 @@ class App():
         for x in xrange(19):
             for y in xrange(19):
                 if self.state[x][y] == "b":
-                    self.c.create_oval(self.wf*(x),self.hf*(y),self.wf*(x+1),self.hf*(y+1),fill="black",outline="white")
-
+                    self.c.create_oval(self.wf*(x),self.hf*(y),
+                                       self.wf*(x+1),self.hf*(y+1),
+                                       fill="black",outline="white")
                 elif self.state[x][y] == "w":
-                    self.c.create_oval(self.wf*(x),self.hf*(y),self.wf*(x+1),self.hf*(y+1),fill="white",outline="black")
+                    self.c.create_oval(self.wf*(x),self.hf*(y),
+                                       self.wf*(x+1),self.hf*(y+1),
+                                       fill="white",outline="black")
+
+        #Draw a red square around the most recent piece
+        if self.lastX != None and self.lastY != None:
+            xStart = (self.lastX*self.wf)+(0.2*self.wf)
+            yStart = (self.lastY*self.hf)+(0.2*self.hf)
+            self.c.create_rectangle(xStart,yStart,
+                                    (.6*self.wf)+xStart,
+                                    (.6*self.hf)+yStart,
+                                    outline="red")
 
     def undo(self,event=None):
         """ 
@@ -125,8 +144,11 @@ class App():
         self.passCount = last['pass']
         self.wPrisoners = last['wPrisoners']
         self.bPrisoners = last['bPrisoners']
+        self.lastX = last['lastX']
+        self.lastY = last['lastY']
         self.score.config(text="B: %d W: %d" % (self.bPrisoners, self.wPrisoners))
         self.resize()
+
     def validPlay(self,x,y):
         """ 
         Determines if play is valid this way:
@@ -193,7 +215,8 @@ class App():
         Handles normal play
         Verifies that play is allowable
         Makes any possible captures
-        Checks for Ko rule. This is not done in ValidPlay(), as we've got to make captures first, and
+        Checks for Ko rule. This is not done in ValidPlay(), as we've got 
+        to make captures first, and
         there's no real reason to do that twice.
         Finish by redrawing board
         """
@@ -227,8 +250,15 @@ class App():
             return False
 
         self.turn = not self.turn
-        self.stateHistory.append({'state':copy.deepcopy(self.state),'pass':self.passCount,\
-                                      'wPrisoners':self.wPrisoners,'bPrisoners':self.bPrisoners,'turn':self.turn})
+        self.lastX = stateX
+        self.lastY = stateY
+        self.stateHistory.append({'state':copy.deepcopy(self.state),
+                                  'pass':self.passCount,
+                                  'wPrisoners':self.wPrisoners,
+                                  'bPrisoners':self.bPrisoners,
+                                  'turn':self.turn,
+                                  'lastX':stateX,
+                                  'lastY':stateY})
         #reset passcount, as they'll need to pass twice in a row in order to end
         self.passCount=0
         
@@ -303,7 +333,8 @@ class App():
 
     def capture(self,x,y):
         """ 
-        Mark all captured pieces as 'c'. Each time a c is created, self.curCaps++ and try to capture adjacent squares
+        Mark all captured pieces as 'c'. Each time a c is created,
+        self.curCaps++ and try to capture adjacent squares
         """
         ourColor = 'b' if self.turn else 'w'
 
@@ -311,13 +342,14 @@ class App():
             return True
         elif self.state[x][y] == 'E':
             return False
-        #we've eliminated the possibility of us calling this function on our own color when adjacent to
-        #something we clicked on (see above) so if we find ourselves, then we must have reached the edge of a group
+        #we've eliminated the possibility of us calling this function on our
+        #own color when adjacent to something we clicked on (see above) so if
+        #we find ourselves, then we must have reached the edge of a group
         elif self.state[x][y] == ourColor:
             return True
         elif self.state[x][y] == 'c':
             return True
-        #The only other option is for us to be on the enemy's square. Try marking it dead.
+        #The only other option is that we're on the enemy's square. Mark it dead
         self.state[x][y] = 'c'
         self.curCaps+=1
         if not self.capture(x-1,y):
@@ -357,6 +389,8 @@ class App():
         self.passCount = 0
         self.wPrisoners = 0
         self.bPrisoners = 0
+        self.lastX = None
+        self.lastY = None
 
         self.state = []
         for x in xrange(19):
@@ -364,7 +398,13 @@ class App():
             for y in xrange(19):
                 self.state[x].append("E")
         self.stateHistory = []
-        self.stateHistory.append({'state':copy.deepcopy(self.state),'pass':self.passCount,'wPrisoners':self.wPrisoners,'bPrisoners':self.bPrisoners,'turn':self.turn})
+        self.stateHistory.append({'state':copy.deepcopy(self.state),
+                                  'pass':self.passCount,
+                                  'wPrisoners':self.wPrisoners,
+                                  'bPrisoners':self.bPrisoners,
+                                  'turn':self.turn,
+                                  'lastX':None,
+                                  'lastY':None})
         self.resize()
         #Error generated if user calls redo from the menu
         try:
