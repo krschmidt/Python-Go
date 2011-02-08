@@ -1,6 +1,5 @@
 # TODO support board sizes other than 19
 # TODO support marking dead stones after both players pass
-# TODO add handicaps
 
 from Tkinter import *
 import copy
@@ -19,8 +18,13 @@ class App():
         playermenu = Menu(menubar,tearoff=0)
         playermenu.add_command(label="Pass",command=self.playerpass)
         playermenu.add_command(label="Undo",command=self.undo)
+        handicapmenu = Menu(menubar,tearoff=0)
+        handicapmenu.add_command(label="0",command=self.reset)
+        for i in xrange(1,10):
+            handicapmenu.add_command(label=i,command=lambda x=i:self.handicap(x))
         menubar.add_cascade(label="File",menu=filemenu)
         menubar.add_cascade(label="Player",menu=playermenu)
+        menubar.add_cascade(label="Handicap",menu=handicapmenu)
         master.config(menu=menubar)        
 
         self.statusbar = Frame(master)
@@ -126,6 +130,32 @@ class App():
                                     (.6*self.hf)+yStart,
                                     outline="red")
 
+    def handicap(self,number):
+        """
+        Adds up to 9 handicap stones
+        
+        TODO modify for alternate board sizes
+        """
+        self.reset()
+
+        self.state[15][3] = 'b'
+        if number == 5 or number == 7 or number ==9:
+            self.state[9][9] = 'b'
+        if number > 1:
+            self.state[3][15] = 'b'
+        if number > 2:
+            self.state[15][15] = 'b'
+        if number > 3:
+            self.state[3][3] = 'b'
+        if number > 5:
+            self.state[3][9] = 'b'
+            self.state[15][9] = 'b'
+        if number > 7:
+            self.state[9][3] = 'b'
+            self.state[9][15] = 'b'
+
+        self.resize()
+            
     def undo(self,event=None):
         """ 
         Undo most recent move by popping last player's state and restoring it
