@@ -56,7 +56,7 @@ class App():
         for x in xrange(19):
             self.state.append([])
             for y in xrange(19):
-                self.state[x].append("E")
+                self.state[x].append("e")
 
         #Used for Undo
         self.stateHistory = []
@@ -85,6 +85,22 @@ class App():
         print
 
     def confirm(self,function,arg=None):
+        """ 
+        Presents the user with a confirm dialog if board isn't empty
+        """
+        foundSomeone = False
+        for x in xrange(19):
+            for y in xrange(19):
+                if self.state[x][y] != 'e':
+                    foundSomeone = True
+        if not foundSomeone:
+            if arg is None:
+                function()
+            else:
+                function(arg)
+            return
+
+        #board has someone
         self.confirmW = Toplevel()
         self.confirmW.title("Sure?")
         msg = Message(self.confirmW, text= "Are you sure?\nThat will end the current game!",width=200)
@@ -95,6 +111,7 @@ class App():
         NoB.pack(side=RIGHT)
 
     def doAndClose(self,function,arg=None):
+        """ Helper function for confirm(), executes function and closes confirmW """
         if arg is None:
             function()
         else:
@@ -207,17 +224,17 @@ class App():
         """
         ourColor = 'b' if self.turn else 'w'
 
-        if self.state[x][y] != "E":
+        if self.state[x][y] != "e":
             self.status.config(text="You need to play on an empty square")
             return False
 
-        if x>0 and self.state[x-1][y]=="E":
+        if x>0 and self.state[x-1][y]=="e":
             return True
-        if x<18 and self.state[x+1][y]=="E":
+        if x<18 and self.state[x+1][y]=="e":
             return True
-        if y>0 and self.state[x][y-1]=="E":
+        if y>0 and self.state[x][y-1]=="e":
             return True
-        if y<18 and self.state[x][y+1]=="E":
+        if y<18 and self.state[x][y+1]=="e":
             return True
 
         #assume we're going to make the play
@@ -247,7 +264,7 @@ class App():
 
         if x<0 or x>18 or y<0 or y>18:
             return False
-        if self.state[x][y] == "E":
+        if self.state[x][y] == "e":
             return True
         if self.state[x][y] != ourColor:
             return False
@@ -374,7 +391,7 @@ class App():
         for x in xrange(19):
             for y in xrange(19):
                 if self.state[x][y] == 'c':
-                    self.state[x][y] = "E"
+                    self.state[x][y] = "e"
         return capped
 
 
@@ -387,7 +404,7 @@ class App():
 
         if not (0<=x<19) or not (0<=y<19):
             return True
-        elif self.state[x][y] == 'E':
+        elif self.state[x][y] == 'e':
             return False
         #we've eliminated the possibility of us calling this function on our
         #own color when adjacent to something we clicked on (see above) so if
@@ -443,7 +460,7 @@ class App():
         for x in xrange(19):
             self.state.append([])
             for y in xrange(19):
-                self.state[x].append("E")
+                self.state[x].append("e")
         self.stateHistory = []
         self.stateHistory.append({'state':copy.deepcopy(self.state),
                                   'pass':self.passCount,
@@ -472,11 +489,11 @@ class App():
         anything = 0
         for x in xrange(19):
             for y in xrange(19):
-                if self.state[x][y] != 'E':
+                if self.state[x][y] != 'e':
                     anything+=1    
         for x in xrange(19):
             for y in xrange(19):
-                if self.state[x][y] != 'E':
+                if self.state[x][y] != 'e':
                     continue
                 self.lastfound = ''
                 backup = copy.deepcopy(self.state)
@@ -533,7 +550,7 @@ class App():
             return True
         if self.state[x][y] == 'p':
             return True
-        elif self.state[x][y] != 'E':
+        elif self.state[x][y] != 'e':
             #we need to see if our cur last found == our last one. if no, then this is neutral territory
             if self.lastfound !='' and self.lastfound!=self.state[x][y]:
                 return False
@@ -550,8 +567,9 @@ class App():
         if not self.checkScore(x,y+1):
             return False
         return True
-        
-root=Tk()
-root.title("Tk Go!")
-myapp=App(root)
-root.mainloop()
+
+if __name__ == '__main__':        
+    root=Tk()
+    root.title("Tk Go!")
+    myapp=App(root)
+    root.mainloop()
