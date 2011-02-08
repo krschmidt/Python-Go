@@ -13,15 +13,15 @@ class App():
         """
         menubar = Menu(master)
         filemenu = Menu(menubar,tearoff=0)
-        filemenu.add_command(label="New",command=self.reset)
+        filemenu.add_command(label="New",command=lambda:self.confirm(self.reset))
         filemenu.add_command(label="Quit",command=self.quit)
         playermenu = Menu(menubar,tearoff=0)
         playermenu.add_command(label="Pass",command=self.playerpass)
         playermenu.add_command(label="Undo",command=self.undo)
         handicapmenu = Menu(menubar,tearoff=0)
-        handicapmenu.add_command(label="0",command=self.reset)
+        handicapmenu.add_command(label="0",command=lambda:self.confirm(self.reset))
         for i in xrange(1,10):
-            handicapmenu.add_command(label=i,command=lambda x=i:self.handicap(x))
+            handicapmenu.add_command(label=i,command=lambda x=i:self.confirm(self.handicap,x))
         menubar.add_cascade(label="File",menu=filemenu)
         menubar.add_cascade(label="Player",menu=playermenu)
         menubar.add_cascade(label="Handicap",menu=handicapmenu)
@@ -83,6 +83,23 @@ class App():
                 print state[y][x],
             print
         print
+
+    def confirm(self,function,arg=None):
+        self.confirmW = Toplevel()
+        self.confirmW.title("Sure?")
+        msg = Message(self.confirmW, text= "Are you sure?\nThat will end the current game!",width=200)
+        msg.pack()
+        YesB = Button(self.confirmW, text="Yes", command=lambda:self.doAndClose(function,arg))
+        YesB.pack(side=LEFT)
+        NoB = Button(self.confirmW, text="No",command=self.confirmW.destroy)
+        NoB.pack(side=RIGHT)
+
+    def doAndClose(self,function,arg=None):
+        if arg is None:
+            function()
+        else:
+            function(arg)
+        self.confirmW.destroy()
 
     def resize(self,event=None):
         """ Create/Resize the Board """
