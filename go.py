@@ -3,6 +3,7 @@
 
 from Tkinter import *
 import copy
+import math
 
 
 class App():
@@ -14,21 +15,26 @@ class App():
         """
         menubar = Menu(master)
         filemenu = Menu(menubar, tearoff=0)
-        filemenu.add_command(label="New", \
-            command=lambda: self.confirm(self.reset))
+        filemenu.add_command(label="New",
+                             command=lambda: self.confirm(self.reset))
         filemenu.add_command(label="Quit", command=self.quit)
         playermenu = Menu(menubar, tearoff=0)
         playermenu.add_command(label="Pass", command=self.playerpass)
         playermenu.add_command(label="Undo", command=self.undo)
         handicapmenu = Menu(menubar, tearoff=0)
-        handicapmenu.add_command(label="0", \
-          command=lambda: self.confirm(self.reset))
+        handicapmenu.add_command(label="0",
+                                 command=lambda: self.confirm(self.reset))
         for i in xrange(1, 10):
-            handicapmenu.add_command(label=i, \
-              command=lambda x=i: self.confirm(self.handicap, x))
+            handicapmenu.add_command(label=i,
+                                     command=lambda x=i:
+                                     self.confirm(self.handicap, x))
+        extrasmenu = Menu(menubar, tearoff=0)
+        extrasmenu.add_checkbutton(label="Influence Map",
+                                   command=self.infHelp)
         menubar.add_cascade(label="File", menu=filemenu)
         menubar.add_cascade(label="Player", menu=playermenu)
         menubar.add_cascade(label="Handicap", menu=handicapmenu)
+        menubar.add_cascade(label="Extras", menu=extrasmenu)
         master.config(menu=menubar)
 
         self.statusbar = Frame(master)
@@ -49,6 +55,7 @@ class App():
         self.passCount = 0
         self.wPrisoners = 0
         self.bPrisoners = 0
+        self.influence = False
 
         #used for noting most recent piece
         self.lastX = None
@@ -69,6 +76,11 @@ class App():
                                   'turn': self.turn,
                                   'lastX': None,
                                   'lastY': None})
+
+    def infHelp(self):
+        """ Turns influence on/off, redraws board """
+        self.influence = not self.influence
+        self.resize()
 
     def printBoard(self, state=None):
         """
@@ -139,17 +151,58 @@ class App():
         #arbitrary, but if it's 42x42, you can't see the pieces anyway.
         if w < 42 or h < 42:
             return
+
         self.wf = w / 19
         #-1 lets the statusbar label fit on the bottom w/o overflowing
         #Leaving 19 - 1 in here for when we add a board size parameter
         self.hf = h / 19 - 1
+
+        #board background
         self.c.create_rectangle(0, 0, w, h, fill="#f2b06d")
+
+        if self.influence:
+            def distance(x, y, px, py):
+                dis = math.sqrt((x - px) ** 2 + (y - py) ** 2)
+                if self.state[px][py] == 'b' and dis > 0:
+                    return (-1 / (dis / 40))
+                elif self.state[px][py] == 'w' and dis > 0:
+                    return (1 / (dis / 40))
+                return 0
+
+            influence = []
+            for x in xrange(19):
+                influence.append([])
+                for y in xrange(19):
+                    influence[x].append(127.5)
+
+            #loop through the influence map, calculate distance to each piece
+            for x in xrange(19):
+                for y in xrange(19):
+                    for px in xrange(19):
+                        for py in xrange(19):
+                            influence[x][y] += distance(x, y, px, py)
+
+            #draw influence rectangles across the board
+            for x in xrange(19):
+                for y in xrange(19):
+                    if influence[x][y] > 255:
+                        influence[x][y] = 255
+                    elif influence[x][y] < 0:
+                        influence[x][y] = 0
+                    rgb = int(influence[x][y]), int(influence[x][y]), 128
+                    hex = '#%02x%02x%02x' % rgb
+                    self.c.create_rectangle(self.wf * x, self.hf * y,
+                                            self.wf * (x + 1),
+                                            self.hf * (y + 1),
+                                            fill=hex, outline="")
+
         for x in xrange(self.wf / 2, 19 * self.wf, self.wf):
             self.c.create_line(x, self.hf / 2, x, (self.hf / 2) + self.hf * 18)
         for y in xrange(self.hf / 2, 19 * self.hf, self.hf):
             self.c.create_line(self.wf / 2, y, (self.wf / 2) + self.wf * 18, y)
+
         #Draw little dots on the powerful plays
-        #TODO Adjusted so the dots don't get too tiny in small windows
+        #TODO Adjust so the dots don't get too tiny in small windows
         for x in xrange((self.wf / 2) + (3 * self.wf), \
             19 * self.wf, self.wf * 6):
             for y in xrange((self.hf / 2) + (3 * self.hf), 19 * self.hf, \
