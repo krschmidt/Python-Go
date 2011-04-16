@@ -1,4 +1,3 @@
-# TODO support board sizes other than 19
 # TODO support marking dead stones after both players pass
 
 from Tkinter import *
@@ -18,23 +17,40 @@ class App():
         filemenu.add_command(label="New",
                              command=lambda: self.confirm(self.reset))
         filemenu.add_command(label="Quit", command=self.quit)
+
         playermenu = Menu(menubar, tearoff=0)
         playermenu.add_command(label="Pass", command=self.playerpass)
         playermenu.add_command(label="Undo", command=self.undo)
-        handicapmenu = Menu(menubar, tearoff=0)
+
+        boardmenu = Menu(menubar, tearoff=0)
+        handicapmenu = Menu(boardmenu, tearoff=0)
         handicapmenu.add_command(label="0",
                                  command=lambda: self.confirm(self.reset))
         for i in xrange(1, 10):
             handicapmenu.add_command(label=i,
                                      command=lambda x=i:
                                      self.confirm(self.handicap, x))
-        extrasmenu = Menu(menubar, tearoff=0)
-        extrasmenu.add_checkbutton(label="Influence Map",
-                                   command=self.infHelp)
+
+        sizeMenu = Menu(boardmenu, tearoff=0)
+        sizeMenu.add_command(label="9",
+                             command=lambda x=9:
+                             self.confirm(self.setSize, 9))
+        sizeMenu.add_command(label="13",
+                             command=lambda x=9:
+                             self.confirm(self.setSize, 13))
+        sizeMenu.add_command(label="19",
+                             command=lambda x=9:
+                             self.confirm(self.setSize, 19))
+
+        boardmenu.add_cascade(label="Handicap", menu=handicapmenu)
+        boardmenu.add_cascade(label="Size", menu=sizeMenu)
+        boardmenu.add_separator()
+        boardmenu.add_command(label="Influence Map",
+                              command=self.infHelp)
+
         menubar.add_cascade(label="File", menu=filemenu)
         menubar.add_cascade(label="Player", menu=playermenu)
-        menubar.add_cascade(label="Handicap", menu=handicapmenu)
-        menubar.add_cascade(label="Extras", menu=extrasmenu)
+        menubar.add_cascade(label="Board", menu=boardmenu)
         master.config(menu=menubar)
 
         self.statusbar = Frame(master)
@@ -56,15 +72,16 @@ class App():
         self.wPrisoners = 0
         self.bPrisoners = 0
         self.influence = False
+        self.size = 19
 
         #used for noting most recent piece
         self.lastX = None
         self.lastY = None
 
         self.state = []
-        for x in xrange(19):
+        for x in xrange(self.size):
             self.state.append([])
-            for y in xrange(19):
+            for y in xrange(self.size):
                 self.state[x].append("e")
 
         #Used for Undo
@@ -76,6 +93,10 @@ class App():
                                   'turn': self.turn,
                                   'lastX': None,
                                   'lastY': None})
+
+    def setSize(self, size):
+        self.size = size
+        self.reset()
 
     def infHelp(self):
         """ Turns influence on/off, redraws board """
@@ -95,8 +116,8 @@ class App():
         """
         if state == None:
             state = self.state
-        for x in xrange(19):
-            for y in xrange(19):
+        for x in xrange(self.size):
+            for y in xrange(self.size):
                 print state[y][x],
             print
         print
@@ -106,8 +127,8 @@ class App():
         Presents the user with a confirm dialog if board isn't empty
         """
         foundSomeone = False
-        for x in xrange(19):
-            for y in xrange(19):
+        for x in xrange(self.size):
+            for y in xrange(self.size):
                 if self.state[x][y] != 'e':
                     foundSomeone = True
         if not foundSomeone:
@@ -152,10 +173,10 @@ class App():
         if w < 42 or h < 42:
             return
 
-        self.wf = w / 19
+        self.wf = w / self.size
         #-1 lets the statusbar label fit on the bottom w/o overflowing
         #Leaving 19 - 1 in here for when we add a board size parameter
-        self.hf = h / 19 - 1
+        self.hf = h / self.size - 1
 
         #board background
         self.c.create_rectangle(0, 0, w, h, fill="#f2b06d")
@@ -164,54 +185,71 @@ class App():
             def distance(x, y, px, py):
                 dis = math.sqrt((x - px) ** 2 + (y - py) ** 2)
                 if self.state[px][py] == 'b' and dis > 0:
-                    return (-1 / (dis / 40))
+                    return (-1 / (dis / 50))
                 elif self.state[px][py] == 'w' and dis > 0:
-                    return (1 / (dis / 40))
+                    return (1 / (dis / 50))
                 return 0
 
             influence = []
-            for x in xrange(19):
+            for x in xrange(self.size):
                 influence.append([])
-                for y in xrange(19):
+                for y in xrange(self.size):
                     influence[x].append(127.5)
 
             #loop through the influence map, calculate distance to each piece
-            for x in xrange(19):
-                for y in xrange(19):
-                    for px in xrange(19):
-                        for py in xrange(19):
+            for x in xrange(self.size):
+                for y in xrange(self.size):
+                    for px in xrange(self.size):
+                        for py in xrange(self.size):
                             influence[x][y] += distance(x, y, px, py)
 
             #draw influence rectangles across the board
-            for x in xrange(19):
-                for y in xrange(19):
+            for x in xrange(self.size):
+                for y in xrange(self.size):
                     if influence[x][y] > 255:
                         influence[x][y] = 255
                     elif influence[x][y] < 0:
                         influence[x][y] = 0
-                    rgb = int(influence[x][y]), int(influence[x][y]), 128
+                    rgb = 128, int(influence[x][y]), int(influence[x][y])
                     hex = '#%02x%02x%02x' % rgb
                     self.c.create_rectangle(self.wf * x, self.hf * y,
                                             self.wf * (x + 1),
                                             self.hf * (y + 1),
                                             fill=hex, outline="")
 
-        for x in xrange(self.wf / 2, 19 * self.wf, self.wf):
-            self.c.create_line(x, self.hf / 2, x, (self.hf / 2) + self.hf * 18)
-        for y in xrange(self.hf / 2, 19 * self.hf, self.hf):
-            self.c.create_line(self.wf / 2, y, (self.wf / 2) + self.wf * 18, y)
+        for x in xrange(self.wf / 2, self.size * self.wf, self.wf):
+            self.c.create_line(x, self.hf / 2, x,
+                               (self.hf / 2) + self.hf * (self.size - 1))
+        for y in xrange(self.hf / 2, self.size * self.hf, self.hf):
+            self.c.create_line(self.wf / 2, y,
+                               (self.wf / 2) + self.wf * (self.size - 1), y)
 
         #Draw little dots on the powerful plays
         #TODO Adjust so the dots don't get too tiny in small windows
-        for x in xrange((self.wf / 2) + (3 * self.wf), \
-            19 * self.wf, self.wf * 6):
-            for y in xrange((self.hf / 2) + (3 * self.hf), 19 * self.hf, \
-                self.hf * 6):
-                self.c.create_oval(x - 3, y - 3, x + 3, y + 3, fill="black")
-
+        if self.size == 19:
+            for x in xrange((self.wf / 2) + (3 * self.wf),
+                            self.size * self.wf, self.wf * 6):
+                for y in xrange((self.hf / 2) + (3 * self.hf),
+                                self.size * self.hf, self.hf * 6):
+                    self.c.create_oval(x - 3, y - 3,
+                                       x + 3, y + 3, fill="black")
+        elif self.size == 13:
+            for x in xrange((self.wf / 2) + (3 * self.wf),
+                            (self.size - 1) * self.wf, self.wf * 3):
+                for y in xrange((self.hf / 2) + (3 * self.hf),
+                                (self.size - 1) * self.hf, self.hf * 3):
+                    self.c.create_oval(x - 3, y - 3,
+                                       x + 3, y + 3, fill="black")
+        elif self.size == 9:
+            for x in xrange((self.wf / 2) + (2 * self.wf),
+                            (self.size - 1) * self.wf, self.wf * 2):
+                for y in xrange((self.hf / 2) + (2 * self.hf),
+                                (self.size - 1) * self.hf, self.hf * 2):
+                    self.c.create_oval(x - 3, y - 3,
+                                       x + 3, y + 3, fill="black")
         #redraw the actual pieces
-        for x in xrange(19):
-            for y in xrange(19):
+        for x in xrange(self.size):
+            for y in xrange(self.size):
                 if self.state[x][y] == "b":
                     self.c.create_oval(self.wf * (x), self.hf * (y),
                                        self.wf * (x + 1), self.hf * (y + 1),
@@ -233,25 +271,58 @@ class App():
     def handicap(self, number):
         """
         Adds up to 9 handicap stones
-        TODO modify for alternate board sizes
         """
         self.reset()
+        if self.size == 19:
+            self.state[15][3] = 'b'
+            if number == 5 or number == 7 or number == 9:
+                self.state[9][9] = 'b'
+            if number > 1:
+                self.state[3][15] = 'b'
+            if number > 2:
+                self.state[15][15] = 'b'
+            if number > 3:
+                self.state[3][3] = 'b'
+            if number > 5:
+                self.state[3][9] = 'b'
+                self.state[15][9] = 'b'
+            if number > 7:
+                self.state[9][3] = 'b'
+                self.state[9][15] = 'b'
 
-        self.state[15][3] = 'b'
-        if number == 5 or number == 7 or number == 9:
-            self.state[9][9] = 'b'
-        if number > 1:
-            self.state[3][15] = 'b'
-        if number > 2:
-            self.state[15][15] = 'b'
-        if number > 3:
-            self.state[3][3] = 'b'
-        if number > 5:
-            self.state[3][9] = 'b'
-            self.state[15][9] = 'b'
-        if number > 7:
+        elif self.size == 13:
             self.state[9][3] = 'b'
-            self.state[9][15] = 'b'
+            if number == 5 or number == 7 or number == 9:
+                self.state[6][6] = 'b'
+            if number > 1:
+                self.state[3][9] = 'b'
+            if number > 2:
+                self.state[9][9] = 'b'
+            if number > 3:
+                self.state[3][3] = 'b'
+            if number > 5:
+                self.state[3][6] = 'b'
+                self.state[9][6] = 'b'
+            if number > 7:
+                self.state[6][3] = 'b'
+                self.state[6][9] = 'b'
+
+        elif self.size == 9:
+            self.state[6][2] = 'b'
+            if number == 5 or number == 7 or number == 9:
+                self.state[4][4] = 'b'
+            if number > 1:
+                self.state[2][6] = 'b'
+            if number > 2:
+                self.state[6][6] = 'b'
+            if number > 3:
+                self.state[2][2] = 'b'
+            if number > 5:
+                self.state[2][4] = 'b'
+                self.state[6][4] = 'b'
+            if number > 7:
+                self.state[4][2] = 'b'
+                self.state[4][6] = 'b'
 
         self.resize()
 
@@ -298,11 +369,11 @@ class App():
 
         if x > 0 and self.state[x - 1][y] == "e":
             return True
-        if x < 18 and self.state[x + 1][y] == "e":
+        if x < self.size - 1 and self.state[x + 1][y] == "e":
             return True
         if y > 0 and self.state[x][y - 1] == "e":
             return True
-        if y < 18 and self.state[x][y + 1] == "e":
+        if y < self.size - 1 and self.state[x][y + 1] == "e":
             return True
 
         #assume we're going to make the play
@@ -331,7 +402,7 @@ class App():
         """
         ourColor = 'b' if turn else 'w'
 
-        if x < 0 or x > 18 or y < 0 or y > 18:
+        if x < 0 or x > self.size - 1 or y < 0 or y > self.size - 1:
             return False
         if self.state[x][y] == "e":
             return True
@@ -415,7 +486,7 @@ class App():
         backupState = copy.deepcopy(self.state)
         self.curCaps = 0
 
-        if (1 <= clickedX < 19) and (0 <= clickedY < 19) and \
+        if (1 <= clickedX < self.size) and (0 <= clickedY < self.size) and \
             self.state[clickedX - 1][clickedY] == target and \
             self.capture(clickedX - 1, clickedY):
             capped = True
@@ -429,9 +500,9 @@ class App():
 
         backupState = copy.deepcopy(self.state)
 
-        if (0 <= clickedX < 18) and (0 <= clickedY < 19) and \
-            self.state[clickedX + 1][clickedY] == target and \
-            self.capture(clickedX + 1, clickedY):
+        if (0 <= clickedX < self.size - 1) and (0 <= clickedY < self.size) \
+            and self.state[clickedX + 1][clickedY] == target \
+            and self.capture(clickedX + 1, clickedY):
             capped = True
             if target == 'w':
                 self.bPrisoners += self.curCaps
@@ -442,9 +513,9 @@ class App():
         self.curCaps = 0
         backupState = copy.deepcopy(self.state)
 
-        if (0 <= clickedX < 19) and (1 <= clickedY < 19) and \
-            self.state[clickedX][clickedY - 1] == target and \
-            self.capture(clickedX, clickedY - 1):
+        if (0 <= clickedX < self.size) and (1 <= clickedY < self.size) \
+            and self.state[clickedX][clickedY - 1] == target \
+            and self.capture(clickedX, clickedY - 1):
             capped = True
             if target == 'w':
                 self.bPrisoners += self.curCaps
@@ -455,9 +526,9 @@ class App():
         self.curCaps = 0
         backupState = copy.deepcopy(self.state)
 
-        if (0 <= clickedX < 19) and (0 <= clickedY < 18) and \
-            self.state[clickedX][clickedY + 1] == target and \
-            self.capture(clickedX, clickedY + 1):
+        if (0 <= clickedX < self.size) and (0 <= clickedY < self.size - 1) \
+            and self.state[clickedX][clickedY + 1] == target \
+            and self.capture(clickedX, clickedY + 1):
             capped = True
             if target == 'w':
                 self.bPrisoners += self.curCaps
@@ -470,8 +541,8 @@ class App():
             % (self.bPrisoners, self.wPrisoners))
 
         #get rid of all those c's we set up back when we were capturing
-        for x in xrange(19):
-            for y in xrange(19):
+        for x in xrange(self.size):
+            for y in xrange(self.size):
                 if self.state[x][y] == 'c':
                     self.state[x][y] = "e"
         return capped
@@ -483,7 +554,7 @@ class App():
         """
         ourColor = 'b' if self.turn else 'w'
 
-        if not (0 <= x < 19) or not (0 <= y < 19):
+        if not (0 <= x < self.size) or not (0 <= y < self.size):
             return True
         elif self.state[x][y] == 'e':
             return False
@@ -538,9 +609,9 @@ class App():
         self.lastY = None
 
         self.state = []
-        for x in xrange(19):
+        for x in xrange(self.size):
             self.state.append([])
-            for y in xrange(19):
+            for y in xrange(self.size):
                 self.state[x].append("e")
         self.stateHistory = []
         self.stateHistory.append({'state': copy.deepcopy(self.state),
@@ -572,12 +643,12 @@ class App():
         TopLevel window for the player to see
         """
         anything = 0
-        for x in xrange(19):
-            for y in xrange(19):
+        for x in xrange(self.size):
+            for y in xrange(self.size):
                 if self.state[x][y] != 'e':
                     anything += 1
-        for x in xrange(19):
-            for y in xrange(19):
+        for x in xrange(self.size):
+            for y in xrange(self.size):
                 if self.state[x][y] != 'e':
                     continue
                 self.lastfound = ''
@@ -589,8 +660,8 @@ class App():
                     #go through board, filling in p's with the capital
                     #letter of the point's owner
                     #we'll count these later
-                    for a in xrange(19):
-                        for b in xrange(19):
+                    for a in xrange(self.size):
+                        for b in xrange(self.size):
                             if self.lastfound == 'w':
                                 point = 'W'
                             else:
@@ -600,8 +671,8 @@ class App():
         #Now we're all done checking points. So print scores
         wTerr = 0
         bTerr = 0
-        for x in xrange(19):
-            for y in xrange(19):
+        for x in xrange(self.size):
+            for y in xrange(self.size):
                 if self.state[x][y] == 'W':
                     wTerr += 1
                 elif self.state[x][y] == 'B':
@@ -637,7 +708,7 @@ class App():
         if it finds a place where black and white both border empty squares
         (that territory should be neutral and not scored)
         """
-        if not (0 <= x < 19) or not (0 <= y < 19):
+        if not (0 <= x < self.size) or not (0 <= y < self.size):
             return True
         if self.state[x][y] == 'p':
             return True
