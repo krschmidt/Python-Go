@@ -1,8 +1,9 @@
 # TODO support marking dead stones after both players pass
-
+from functions import *
 from Tkinter import *
 import copy
 import math
+import ai
 
 
 class App():
@@ -352,71 +353,6 @@ class App():
             % (self.bPrisoners, self.wPrisoners))
         self.resize()
 
-    def validPlay(self, x, y):
-        """
-        Determines if play is valid this way:
-        if space != empty, disallow play
-        if neighbor == empty, allow play
-        if we can capture a neighbor, allow play
-        if our play leaves us with any liberties, allow play
-        else restore board state and return False
-        """
-        ourColor = 'b' if self.turn else 'w'
-
-        if self.state[x][y] != "e":
-            self.status.config(text="You need to play on an empty square")
-            return False
-
-        if x > 0 and self.state[x - 1][y] == "e":
-            return True
-        if x < self.size - 1 and self.state[x + 1][y] == "e":
-            return True
-        if y > 0 and self.state[x][y - 1] == "e":
-            return True
-        if y < self.size - 1 and self.state[x][y + 1] == "e":
-            return True
-
-        #assume we're going to make the play
-        backup = copy.deepcopy(self.state)
-        self.state[x][y] = ourColor
-
-        #can we make a capture at this play? if yes, allow
-        if self.captureHelper(x, y, self.turn):
-            self.state = copy.deepcopy(backup)
-            return True
-
-        #does our group have any liberties? if yes, allow
-        if self.hasLiberties(x, y, self.turn):
-            self.state = copy.deepcopy(backup)
-            return True
-
-        self.status.config(text="That's playing into suicide!")
-        self.state = copy.deepcopy(backup)
-        return False
-
-    def hasLiberties(self, x, y, turn):
-        """
-        Checks if a group at x,y has any liberties (open spaces).
-        Because it marks places it's already been as the enemy, undo
-        needs to be called after this function finishes
-        """
-        ourColor = 'b' if turn else 'w'
-
-        if x < 0 or x > self.size - 1 or y < 0 or y > self.size - 1:
-            return False
-        if self.state[x][y] == "e":
-            return True
-        if self.state[x][y] != ourColor:
-            return False
-        #mark ourselves as the enemy, so that we don't recurse forever
-        #this change must be reverted outside this function
-        self.state[x][y] = 'w' if turn else 'b'
-
-        return self.hasLiberties(x - 1, y, turn) or \
-            self.hasLiberties(x + 1, y, turn) or \
-            self.hasLiberties(x, y - 1, turn) or \
-            self.hasLiberties(x, y + 1, turn)
-
     def click(self, event):
         """
         Handles normal play
@@ -434,7 +370,10 @@ class App():
         stateX = event.x / self.wf
         stateY = event.y / self.hf
 
-        if not self.validPlay(stateX, stateY):
+        possible, message = validPlay(copy.deepcopy(self.state),
+                                      self.turn, stateX, stateY)
+        self.status.config(text=message)
+        if not possible:
             return False
 
         backup = copy.deepcopy(self.state)
@@ -444,7 +383,16 @@ class App():
         #store existing prisoners in case we need to roll back
         preb = self.bPrisoners
         prew = self.wPrisoners
-        self.captureHelper(stateX, stateY, self.turn)
+        newState, possible, captures = captureHelper(copy.deepcopy(self.state),
+                                                     stateX, stateY, self.turn)
+        if possible:
+            self.state = copy.deepcopy(newState)
+            if self.turn:
+                self.bPrisoners += captures
+            else:
+                self.wPrisoners += captures
+        self.score.config(text="B: %d W: %d" \
+                              % (self.bPrisoners, self.wPrisoners))
 
         #Check for ko
         if self.state == \
@@ -473,110 +421,12 @@ class App():
         #redraw board
         self.resize()
 
-    def captureHelper(self, clickedX, clickedY, turn):
-        """
-        Attempts to capture each adjacent square
-        Consists of four if statements, each of the form:
-        if you can do a capture, store the points, else roll back the capture
-        """
-
-        capped = False
-        target = 'w' if turn else 'b'
-
-        backupState = copy.deepcopy(self.state)
-        self.curCaps = 0
-
-        if (1 <= clickedX < self.size) and (0 <= clickedY < self.size) and \
-            self.state[clickedX - 1][clickedY] == target and \
-            self.capture(clickedX - 1, clickedY):
-            capped = True
-            if target == 'w':
-                self.bPrisoners += self.curCaps
-            else:
-                self.wPrisoners += self.curCaps
-        else:
-            self.state = copy.deepcopy(backupState)
-        self.curCaps = 0
-
-        backupState = copy.deepcopy(self.state)
-
-        if (0 <= clickedX < self.size - 1) and (0 <= clickedY < self.size) \
-            and self.state[clickedX + 1][clickedY] == target \
-            and self.capture(clickedX + 1, clickedY):
-            capped = True
-            if target == 'w':
-                self.bPrisoners += self.curCaps
-            else:
-                self.wPrisoners += self.curCaps
-        else:
-            self.state = copy.deepcopy(backupState)
-        self.curCaps = 0
-        backupState = copy.deepcopy(self.state)
-
-        if (0 <= clickedX < self.size) and (1 <= clickedY < self.size) \
-            and self.state[clickedX][clickedY - 1] == target \
-            and self.capture(clickedX, clickedY - 1):
-            capped = True
-            if target == 'w':
-                self.bPrisoners += self.curCaps
-            else:
-                self.wPrisoners += self.curCaps
-        else:
-            self.state = copy.deepcopy(backupState)
-        self.curCaps = 0
-        backupState = copy.deepcopy(self.state)
-
-        if (0 <= clickedX < self.size) and (0 <= clickedY < self.size - 1) \
-            and self.state[clickedX][clickedY + 1] == target \
-            and self.capture(clickedX, clickedY + 1):
-            capped = True
-            if target == 'w':
-                self.bPrisoners += self.curCaps
-            else:
-                self.wPrisoners += self.curCaps
-        else:
-            self.state = copy.deepcopy(backupState)
-        self.curCaps = 0
-        self.score.config(text="B: %d W: %d" \
-            % (self.bPrisoners, self.wPrisoners))
-
-        #get rid of all those c's we set up back when we were capturing
-        for x in xrange(self.size):
-            for y in xrange(self.size):
-                if self.state[x][y] == 'c':
-                    self.state[x][y] = "e"
-        return capped
-
-    def capture(self, x, y):
-        """
-        Mark all captured pieces as 'c'. Each time a c is created,
-        self.curCaps++ and try to capture adjacent squares
-        """
-        ourColor = 'b' if self.turn else 'w'
-
-        if not (0 <= x < self.size) or not (0 <= y < self.size):
-            return True
-        elif self.state[x][y] == 'e':
-            return False
-        #we've eliminated the possibility of us calling this function on our
-        #own color when adjacent to something we clicked on (see above) so if
-        #we find ourselves, then we must have reached the edge of a group
-        elif self.state[x][y] == ourColor:
-            return True
-        elif self.state[x][y] == 'c':
-            return True
-        #The only other option is that we're on an enemy square. Mark it dead
-        self.state[x][y] = 'c'
-        self.curCaps += 1
-        if not self.capture(x - 1, y):
-            return False
-        if not self.capture(x + 1, y):
-            return False
-        if not self.capture(x, y + 1):
-            return False
-        if not self.capture(x, y - 1):
-            return False
-        return True
+        #if it's whites turn, then do ai stuff
+        if not self.turn:
+            stateX, stateY = ai.play(self.state)
+            self.state[stateX][stateY] = 'w'
+            self.resize()
+            self.turn = not self.turn
 
     def playerpass(self):
         """
