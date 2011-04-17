@@ -428,6 +428,8 @@ class App():
         #if it's whites turn, then do ai stuff
         if not self.turn:
             stateX, stateY = ai.play(copy.deepcopy(self.state))
+            if stateX == -1 and stateY == -1:
+                self.playerpass()
             self.click(None, stateX, stateY)
 #            self.state[stateX][stateY] = 'w'
 #            self.resize()
