@@ -26,7 +26,9 @@ def play(state):
         valid, message = functions.validPlay(copy.deepcopy(state), False, x, y)
         counter += 1
     if counter >= size * size:
-        print "we should pass"
+        # return two -1's to pass. This should be improved.
+        # we don't want to only pass when there's nowhere for us to play
+        return (-1, -1)
     return (x, y)
 
 
