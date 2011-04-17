@@ -354,7 +354,7 @@ class App():
             % (self.bPrisoners, self.wPrisoners))
         self.resize()
 
-    def click(self, event):
+    def click(self, event=None, cx=None, cy=None):
         """
         Handles normal play
         Verifies that play is allowable
@@ -365,11 +365,15 @@ class App():
         """
         self.status.config(text="")
 
-        #figure out what square we clicked on
-        x = (event.x + self.wf) - event.x % self.wf
-        y = (event.y + self.hf) - event.y % self.hf
-        stateX = event.x / self.wf
-        stateY = event.y / self.hf
+        if event == None:
+            stateX = cx
+            stateY = cy
+        else:
+            #figure out what square we clicked on
+            x = (event.x + self.wf) - event.x % self.wf
+            y = (event.y + self.hf) - event.y % self.hf
+            stateX = event.x / self.wf
+            stateY = event.y / self.hf
 
         possible, message = validPlay(copy.deepcopy(self.state),
                                       self.turn, stateX, stateY)
@@ -397,7 +401,7 @@ class App():
 
         #Check for ko
         if self.state == \
-            self.stateHistory[len(self.stateHistory) - 2]['state']:
+                self.stateHistory[len(self.stateHistory) - 2]['state']:
             self.state = copy.deepcopy(backup)
             self.bPrisoners = preb
             self.wPrisoners = prew
@@ -424,10 +428,10 @@ class App():
 
         #if it's whites turn, then do ai stuff
         if not self.turn:
-            stateX, stateY = ai.play(self.state)
-            self.state[stateX][stateY] = 'w'
-            self.resize()
-            self.turn = not self.turn
+            stateX, stateY = ai.play(copy.deepcopy(self.state))
+            self.click(None, stateX, stateY)
+#            self.state[stateX][stateY] = 'w'
+#            self.resize()
 
     def playerpass(self):
         """

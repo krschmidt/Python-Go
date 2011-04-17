@@ -3,6 +3,15 @@ import copy
 s = 0
 
 
+def inBounds(state, x, y):
+    size = len(state[0])
+    if x < 0 or y < 0:
+        return False
+    if x >= size or y >= size:
+        return False
+    return True
+
+
 def validPlay(state, turn, x, y):
     """
     Determines if play is valid this way:
@@ -14,10 +23,10 @@ def validPlay(state, turn, x, y):
     """
     ourColor = 'b' if turn else 'w'
     size = len(state[0])
-
+    if not inBounds(state, x, y):
+        return (False, "That's out of Bounds")
     if state[x][y] != "e":
         return (False, "You need to play on an empty square")
-
     if x > 0 and state[x - 1][y] == "e":
         return (True, "")
     if x < size - 1 and state[x + 1][y] == "e":
