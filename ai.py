@@ -16,6 +16,31 @@ def play(state):
     x, y = huntForCaptures(copy.deepcopy(state))
     if functions.inBounds(state, x, y):
         return (x, y)
+
+    #check to see if any of our pieces are about to die:
+    #also a bad plan
+    for x in xrange(size):
+        for y in xrange(size):
+            if state[x][y] == 'w' \
+                    and functions.hasLiberties(copy.deepcopy(state), x, y, False) == 1:
+                if functions.inBounds(state, x - 1, y) and state[x - 1][y] == 'e':
+                    valid, message = functions.validPlay(copy.deepcopy(state), False, x - 1, y)
+                    if valid:
+                        return (x - 1, y)
+                if functions.inBounds(state, x + 1, y) and state[x + 1][y] == 'e':
+                    valid, message = functions.validPlay(copy.deepcopy(state), False, x + 1, y)
+                    if valid:
+                        return (x + 1, y)
+                if functions.inBounds(state, x, y - 1) and state[x][y - 1] == 'e':
+                    valid, message = functions.validPlay(copy.deepcopy(state), False, x, y - 1)
+                    if valid:
+                        return (x, y - 1)
+                if functions.inBounds(state, x, y + 1) and state[x][y + 1] == 'e':
+                    valid, message = functions.validPlay(copy.deepcopy(state), False, x, y + 1)
+                    if valid:
+                        return (x, y + 1)
+
+    #play randomly
     x = random.randint(0, size - 1)
     y = random.randint(0, size - 1)
     valid, message = functions.validPlay(copy.deepcopy(state), False, x, y)
