@@ -51,7 +51,7 @@ def validPlay(state, turn, x, y):
         return (True, "")
 
     #does our group have any liberties? if yes, allow
-    if hasLiberties(copy.deepcopy(state), x, y, turn):
+    if hasLiberties(copy.deepcopy(state), x, y, turn) > 0:
         return (True, "")
     else:
         return (False, "That's playing into suicide!")
@@ -109,7 +109,7 @@ def captureHelper(state, clickedX, clickedY, turn):
             and s[clickedX - 1][clickedY] == target:
         liberties = hasLiberties(s, clickedX - 1, clickedY, not turn)
         s = copy.deepcopy(backupState)
-        if not liberties:
+        if liberties == 0:
             prisoners += capture(turn, clickedX - 1, clickedY)
         else:
             s = copy.deepcopy(backupState)
@@ -119,7 +119,7 @@ def captureHelper(state, clickedX, clickedY, turn):
             and s[clickedX + 1][clickedY] == target:
         liberties = hasLiberties(s, clickedX + 1, clickedY, not turn)
         s = copy.deepcopy(backupState)
-        if not liberties:
+        if liberties == 0:
             prisoners += capture(turn, clickedX + 1, clickedY)
         else:
             s = copy.deepcopy(backupState)
@@ -129,7 +129,7 @@ def captureHelper(state, clickedX, clickedY, turn):
             and s[clickedX][clickedY - 1] == target:
         liberties = hasLiberties(s, clickedX, clickedY - 1, not turn)
         s = copy.deepcopy(backupState)
-        if not liberties:
+        if liberties == 0:
             prisoners += capture(turn, clickedX, clickedY - 1)
         else:
             s = copy.deepcopy(backupState)
@@ -139,7 +139,7 @@ def captureHelper(state, clickedX, clickedY, turn):
             and s[clickedX][clickedY + 1] == target:
         liberties = hasLiberties(s, clickedX, clickedY + 1, not turn)
         s = copy.deepcopy(backupState)
-        if not liberties:
+        if liberties == 0:
                 prisoners += capture(turn, clickedX, clickedY + 1)
         else:
             s = copy.deepcopy(backupState)
@@ -185,18 +185,18 @@ def hasLiberties(state, x, y, turn):
     size = len(state[0])
 
     if x < 0 or x > size - 1 or y < 0 or y > size - 1:
-        return False
+        return 0
     if state[x][y] == "e":
-        return True
+        return 1
     if state[x][y] != ourColor:
-        return False
+        return 0
     #mark ourselves as the enemy, so that we don't recurse forever
     #this change must be reverted outside this function
     state[x][y] = 'w' if turn else 'b'
 
-    return hasLiberties(state, x - 1, y, turn) or \
-        hasLiberties(state, x + 1, y, turn) or \
-        hasLiberties(state, x, y - 1, turn) or \
+    return hasLiberties(state, x - 1, y, turn) + \
+        hasLiberties(state, x + 1, y, turn) + \
+        hasLiberties(state, x, y - 1, turn) + \
         hasLiberties(state, x, y + 1, turn)
 
 
