@@ -23,6 +23,10 @@ class App():
         playermenu = Menu(menubar, tearoff=0)
         playermenu.add_command(label="Pass", command=self.playerpass)
         playermenu.add_command(label="Undo", command=self.undo)
+        playermenu.add_separator()
+        playermenu.add_checkbutton(label="Play against Computer (Beta)",
+                                   command=lambda:
+                                   self.confirm(self.setComputer))
 
         boardmenu = Menu(menubar, tearoff=0)
         handicapmenu = Menu(boardmenu, tearoff=0)
@@ -47,7 +51,7 @@ class App():
         boardmenu.add_cascade(label="Handicap", menu=handicapmenu)
         boardmenu.add_cascade(label="Size", menu=sizeMenu)
         boardmenu.add_separator()
-        boardmenu.add_command(label="Influence Map",
+        boardmenu.add_checkbutton(label="Influence Map",
                               command=self.infHelp)
 
         menubar.add_cascade(label="File", menu=filemenu)
@@ -75,6 +79,7 @@ class App():
         self.bPrisoners = 0
         self.influence = False
         self.size = 19
+        self.playComputer = False
 
         #used for noting most recent piece
         self.lastX = None
@@ -95,6 +100,10 @@ class App():
                                   'turn': self.turn,
                                   'lastX': None,
                                   'lastY': None})
+
+    def setComputer(self):
+        self.playComputer = not self.playComputer
+        self.reset()
 
     def setSize(self, size):
         self.size = size
@@ -340,8 +349,9 @@ class App():
             self.status.config(text="You can't undo! \
                 There's nothing on the board!")
             return
-
         self.stateHistory.pop()
+        if self.playComputer:
+            self.stateHistory.pop()
         last = copy.deepcopy(self.stateHistory[len(self.stateHistory) - 1])
         self.state = last['state']
         self.turn = last['turn']
@@ -427,7 +437,7 @@ class App():
         self.resize()
 
         #if it's whites turn, then do ai stuff
-        if not self.turn:
+        if not self.turn and self.playComputer:
             stateX, stateY = ai.play(copy.deepcopy(self.state))
             if stateX == -1 and stateY == -1:
                 self.playerpass()
