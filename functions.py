@@ -165,3 +165,23 @@ def hasLiberties(state, x, y, turn):
         hasLiberties(state, x + 1, y, turn) or \
         hasLiberties(state, x, y - 1, turn) or \
         hasLiberties(state, x, y + 1, turn)
+
+
+def printBoard(self, state=None):
+    """
+    Helper function to print board state to console, not used in normal
+    play.
+
+    Note the default assignment of state to None. This is done so that
+    we could potentially use this function to print a board other than
+    this one.
+
+    You can't simply use state=self.state, as self isn't available yet.
+    """
+    if state == None:
+        state = self.state
+    for x in xrange(self.size):
+        for y in xrange(self.size):
+            print state[y][x],
+        print
+    print
