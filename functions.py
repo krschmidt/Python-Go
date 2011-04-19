@@ -1,9 +1,13 @@
 import copy
+import math
 #global copy of state, handy for recursing with
 s = 0
 
 
 def inBounds(state, x, y):
+    """
+    Tests if the coordinate x, y is inbounds
+    """
     size = len(state[0])
     if x < 0 or y < 0:
         return False
@@ -52,6 +56,35 @@ def validPlay(state, turn, x, y):
     else:
         return (False, "That's playing into suicide!")
     print "Weird situation"
+
+
+def getInfluenceMap(state):
+    size = len(state[0])
+
+    def distance(x, y, px, py):
+        dis = math.sqrt((x - px) ** 2 + (y - py) ** 2)
+        if state[px][py] == 'b' and dis > 0:
+            return (-1 / (dis / 50))
+        elif state[px][py] == 'w' and dis > 0:
+            return (1 / (dis / 50))
+        return 0
+
+    influence = []
+    for x in xrange(size):
+        influence.append([])
+        for y in xrange(size):
+            influence[x].append(127.5)
+
+    # TODO if this ever gets profiled as slow, note that we're calculating
+    # a lot of things multiple times. dist from a to be gets stored at a,
+    # but could also get stored at b. so n ops becomes n/2
+    #loop through the influence map, calculate distance to each piece
+    for x in xrange(size):
+        for y in xrange(size):
+            for px in xrange(size):
+                for py in xrange(size):
+                    influence[x][y] += distance(x, y, px, py)
+    return influence
 
 
 def captureHelper(state, clickedX, clickedY, turn):
