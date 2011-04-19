@@ -2,7 +2,6 @@
 from functions import *
 from Tkinter import *
 import copy
-import math
 import ai
 
 
@@ -173,35 +172,16 @@ class App():
         self.c.create_rectangle(0, 0, w, h, fill="#f2b06d")
 
         if self.influence:
-            def distance(x, y, px, py):
-                dis = math.sqrt((x - px) ** 2 + (y - py) ** 2)
-                if self.state[px][py] == 'b' and dis > 0:
-                    return (-1 / (dis / 50))
-                elif self.state[px][py] == 'w' and dis > 0:
-                    return (1 / (dis / 50))
-                return 0
-
-            influence = []
-            for x in xrange(self.size):
-                influence.append([])
-                for y in xrange(self.size):
-                    influence[x].append(127.5)
-
-            #loop through the influence map, calculate distance to each piece
-            for x in xrange(self.size):
-                for y in xrange(self.size):
-                    for px in xrange(self.size):
-                        for py in xrange(self.size):
-                            influence[x][y] += distance(x, y, px, py)
+            influences = getInfluenceMap(self.state)
 
             #draw influence rectangles across the board
             for x in xrange(self.size):
                 for y in xrange(self.size):
-                    if influence[x][y] > 255:
-                        influence[x][y] = 255
-                    elif influence[x][y] < 0:
-                        influence[x][y] = 0
-                    rgb = 128, int(influence[x][y]), int(influence[x][y])
+                    if influences[x][y] > 255:
+                        influences[x][y] = 255
+                    elif influences[x][y] < 0:
+                        influences[x][y] = 0
+                    rgb = 128, int(influences[x][y]), int(influences[x][y])
                     hex = '#%02x%02x%02x' % rgb
                     self.c.create_rectangle(self.wf * x, self.hf * y,
                                             self.wf * (x + 1),
