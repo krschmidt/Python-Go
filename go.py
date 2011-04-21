@@ -6,6 +6,7 @@ import copy
 import math
 import argparse
 import ai
+import time
 
 
 class App():
@@ -402,7 +403,11 @@ class App():
 
         #if it's whites turn, then do ai stuff
         if not self.turn and self.playComputer:
+            t0 = time.clock()
             stateX, stateY = ai.play(copy.deepcopy(self.state))
+            te = time.clock() - t0
+            if te < 0.5:
+                time.sleep(0.2)
             if stateX == -1 and stateY == -1:
                 self.playerpass()
             else:
@@ -421,7 +426,11 @@ class App():
             self.turn = not self.turn
             if not self.turn and self.playComputer:
                 #black passed, so white needs to know to go
+                t0 = time.clock()
                 stateX, stateY = ai.play(copy.deepcopy(self.state))
+                te = time.clock() - t0
+                if te < 0.5:
+                    time.sleep(0.2)
                 if stateX == -1 and stateY == -1:
                     self.playerpass()
                 else:

@@ -19,7 +19,8 @@ def play(state):
     #we actually want to test life and only capture if we must
     x, y = huntForCaptures(copy.deepcopy(state))
     if functions.inBounds(state, x, y):
-        print "White will capture"
+        if mode == 'v':
+            print "White will capture"
         return (x, y)
 
     #check to see if any of our pieces are about to die:
