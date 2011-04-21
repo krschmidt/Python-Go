@@ -84,17 +84,18 @@ def play(state):
     for x in xrange(2, size - 2):
         for y in xrange(2, size - 2):
             valid, message = functions.validPlay(copy.deepcopy(state), False, x, y)
-            if valid and abs(infMap[x][y] - 128) < c:
+            if valid and abs(infMap[x][y] - 128) < c \
+                    and not inAnEye(copy.deepcopy(state), x, y):
                 cx = x
                 cy = y
-                c = abs(infMap[x][y])
+                c = abs(infMap[x][y] - 128)
     if cx != -1 and cy != -1:
         print "White attemps to influence the most neutral area"
         return (cx, cy)
 
     #see which play maximizes the amount of influence we have on the board
     #three temp variables to keep track of what is best
-    #TODO this doesn't really work. Computer tends to play at the center
+
     #since that'll obviously increase average fitness the most.
     #maybe if len(stateHistory) < 5 then we should try to maximize our distance from ourselves
     #while still being at least 2 from the edge?
@@ -110,15 +111,16 @@ def play(state):
             elif state[x][y] == 'e':
                 valid, message = functions.validPlay(copy.deepcopy(state), False, x, y)
                 if valid:
-                    backup = copy.deepcopy(state)
-                    backup[x][y] = 'w'
-                    infMap = functions.getInfluenceMap(backup)
-                    #find average influence
-                    avgInf = sum(map(sum, zip(*infMap))) / (size * size)
-                    if avgInf > best:
-                        best = avgInf
-                        bx = x
-                        by = y
+                    if not inAnEye(copy.deepcopy(state), x, y):
+                        backup = copy.deepcopy(state)
+                        backup[x][y] = 'w'
+                        infMap = functions.getInfluenceMap(backup)
+                        #find average influence
+                        avgInf = sum(map(sum, zip(*infMap))) / (size * size)
+                        if avgInf > best:
+                            best = avgInf
+                            bx = x
+                            by = y
     #calculate an existing influence level first? only play if we improve by a ranodm maount?
     if bx != -1 and by != -1:
         print "white tries to maximize influence"
@@ -129,7 +131,7 @@ def play(state):
     y = random.randint(0, size - 1)
     valid, message = functions.validPlay(copy.deepcopy(state), False, x, y)
     counter = 0
-    while not valid and counter < size * size:
+    while not valid or counter < size * size or inAnEye(copy.deepcopy(state), x, y):
         x = random.randint(0, size - 1)
         y = random.randint(0, size - 1)
         valid, message = functions.validPlay(copy.deepcopy(state), False, x, y)
@@ -199,3 +201,26 @@ def huntForCaptures(state):
                     else:
                         state[x][y + 1] = oldValue
     return (-1, -1)
+
+def inAnEye(state, x, y):
+    """
+    returns True if x, y is inside of an eye.
+    Useful becuase we probably don't want to play there if this is true
+    TODO we'll also probably want to modify this, because it doesn't take into
+    account double eyes
+    """
+    if not functions.inBounds(state, x, y):
+        return True
+    if state[x][y] == 'b':
+        return False
+    if state[x][y] == 'w':
+        return True
+    if state[x][y] == 'x':
+        #we've already looked here
+        return True
+    if state[x][y] == 'e':
+        state[x][y] = 'x'
+        return inAnEye(state, x - 1, y) and \
+            inAnEye(state, x + 1, y) and \
+            inAnEye(state, x, y - 1) and \
+            inAnEye(state, x, y + 1)
