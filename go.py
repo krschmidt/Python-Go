@@ -416,6 +416,14 @@ class App():
             else:
                 self.status.config(text="White passes!")
             self.turn = not self.turn
+            if not self.turn and self.playComputer:
+                #black passed, so white needs to know to go
+                stateX, stateY = ai.play(copy.deepcopy(self.state))
+                if stateX == -1 and stateY == -1:
+                    self.playerpass()
+                else:
+                    self.click(None, stateX, stateY)
+
         else:
             self.status.config(text="Game Over!")
             self.findscore()

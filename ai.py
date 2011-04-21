@@ -4,11 +4,9 @@ import copy
 
 size = 19
 
-# We should probably be maintaining a global of plays that's based on state. When the user goes,
-# we can update that global. Then we can also maintain a listing of bad plays - things like
-# neutral territory where playing wouldn't give us territory or liberties
 
 # TODO this doesn't ever seem to take KO into account
+# TODO bug in searching for a rescue if the group is large
 def play(state):
     """
     This function receives a board state, and returns a play as a tuple (x,y)
@@ -30,22 +28,22 @@ def play(state):
                     and functions.hasLiberties(copy.deepcopy(state), x, y, False) == 1:
                 if functions.inBounds(state, x - 1, y) and state[x - 1][y] == 'e':
                     valid, message = functions.validPlay(copy.deepcopy(state), False, x - 1, y)
-                    if valid:
+                    if valid and not playIntoAtari(copy.deepcopy(state), x - 1, y):
                         print "White tries to save"
                         return (x - 1, y)
                 if functions.inBounds(state, x + 1, y) and state[x + 1][y] == 'e':
                     valid, message = functions.validPlay(copy.deepcopy(state), False, x + 1, y)
-                    if valid:
+                    if valid and not playIntoAtari(copy.deepcopy(state), x + 1, y):
                         print "White tries to save"
                         return (x + 1, y)
                 if functions.inBounds(state, x, y - 1) and state[x][y - 1] == 'e':
                     valid, message = functions.validPlay(copy.deepcopy(state), False, x, y - 1)
-                    if valid:
+                    if valid and not playIntoAtari(copy.deepcopy(state), x, y - 1):
                         print "White tries to save"
                         return (x, y - 1)
                 if functions.inBounds(state, x, y + 1) and state[x][y + 1] == 'e':
                     valid, message = functions.validPlay(copy.deepcopy(state), False, x, y + 1)
-                    if valid:
+                    if valid and not playIntoAtari(copy.deepcopy(state), x, y + 1):
                         print "White tries to save"
                         return (x, y + 1)
 
@@ -56,22 +54,22 @@ def play(state):
                     and functions.hasLiberties(copy.deepcopy(state), x, y, True) == 2:
                 if functions.inBounds(state, x - 1, y) and state[x - 1][y] == 'e':
                     valid, message = functions.validPlay(copy.deepcopy(state), False, x - 1, y)
-                    if valid:
+                    if valid and not playIntoAtari(copy.deepcopy(state), x - 1, y):
                         print "White sets up atari"
                         return (x - 1, y)
                 if functions.inBounds(state, x + 1, y) and state[x + 1][y] == 'e':
                     valid, message = functions.validPlay(copy.deepcopy(state), False, x + 1, y)
-                    if valid:
+                    if valid and not playIntoAtari(copy.deepcopy(state), x + 1, y):
                         print "White sets up atari"
                         return (x + 1, y)
                 if functions.inBounds(state, x, y - 1) and state[x][y - 1] == 'e':
                     valid, message = functions.validPlay(copy.deepcopy(state), False, x, y - 1)
-                    if valid:
+                    if valid and not playIntoAtari(copy.deepcopy(state), x, y - 1):
                         print "White sets up atari"
                         return (x, y - 1)
                 if functions.inBounds(state, x, y + 1) and state[x][y + 1] == 'e':
                     valid, message = functions.validPlay(copy.deepcopy(state), False, x, y + 1)
-                    if valid:
+                    if valid and not playIntoAtari(copy.deepcopy(state), x, y + 1):
                         print "White sets up atari"
                         return (x, y + 1)
 
@@ -85,7 +83,8 @@ def play(state):
         for y in xrange(2, size - 2):
             valid, message = functions.validPlay(copy.deepcopy(state), False, x, y)
             if valid and abs(infMap[x][y] - 128) < c \
-                    and not inAnEye(copy.deepcopy(state), x, y):
+                    and not inAnEye(copy.deepcopy(state), x, y) \
+                    and not playIntoAtari(copy.deepcopy(state), x, y):
                 cx = x
                 cy = y
                 c = abs(infMap[x][y] - 128)
@@ -111,7 +110,7 @@ def play(state):
             elif state[x][y] == 'e':
                 valid, message = functions.validPlay(copy.deepcopy(state), False, x, y)
                 if valid:
-                    if not inAnEye(copy.deepcopy(state), x, y):
+                    if not inAnEye(copy.deepcopy(state), x, y) and not playIntoAtari(copy.deepcopy(state), x, y):
                         backup = copy.deepcopy(state)
                         backup[x][y] = 'w'
                         infMap = functions.getInfluenceMap(backup)
@@ -131,12 +130,15 @@ def play(state):
     y = random.randint(0, size - 1)
     valid, message = functions.validPlay(copy.deepcopy(state), False, x, y)
     counter = 0
-    while not valid or counter < size * size or inAnEye(copy.deepcopy(state), x, y):
+    #TODO fix this counter crap. Maintain a list of locations? Remove every play?
+    while (not valid or inAnEye(copy.deepcopy(state), x, y) \
+            or playIntoAtari(copy.deepcopy(state), x, y)) \
+            and counter < size * size * 3:
         x = random.randint(0, size - 1)
         y = random.randint(0, size - 1)
         valid, message = functions.validPlay(copy.deepcopy(state), False, x, y)
         counter += 1
-    if counter >= size * size:
+    if counter >= size * size * 3:
         # return two -1's to pass. This should be improved.
         # we don't want to only pass when there's nowhere for us to play
         print "white passes"
@@ -144,6 +146,12 @@ def play(state):
     print "white plays randomly"
     return (x, y)
 
+
+def playIntoAtari(state, x, y):
+    state[x][y] = 'w'
+    if functions.hasLiberties(copy.deepcopy(state), x, y, False) == 1:
+        return True
+    return False
 
 def huntForCaptures(state):
     global size
