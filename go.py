@@ -570,6 +570,8 @@ class App():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('-c', action='store_true', dest='play_computer',
+                        default=False, help='Play the computer (beta)')
     parser.add_argument('-i', action='store_true', dest='show_influence',
                         default=False, help='Display the influence map')
     parser.add_argument('-s', type=int, dest='board_size',
@@ -583,4 +585,7 @@ if __name__ == '__main__':
         myapp.size = results.board_size
     if results.show_influence:
         myapp.influence = True
+    if results.play_computer:
+        myapp.playComputer = True
+    myapp.reset()
     root.mainloop()
