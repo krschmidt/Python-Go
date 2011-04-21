@@ -580,6 +580,9 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--size', type=int, dest='board_size',
                         choices=(9, 13, 19),
                         help='Set the board size')
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        dest='verbose', default=False,
+                        help='Debugging info')
     results = parser.parse_args()
     root = Tk()
     root.title("Tk Go!")
@@ -590,5 +593,7 @@ if __name__ == '__main__':
         myapp.influence = True
     if results.play_computer:
         myapp.playComputer = True
+    if results.verbose:
+        ai.mode = 'v'
     myapp.reset()
     root.mainloop()

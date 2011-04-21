@@ -3,6 +3,7 @@ import functions
 import copy
 
 size = 19
+mode = ''
 
 
 # TODO this doesn't ever seem to take KO into account
@@ -11,7 +12,7 @@ def play(state):
     """
     This function receives a board state, and returns a play as a tuple (x,y)
     """
-    global size
+    global size, mode
     size = len(state[0])
 
     #look for a capture first. This is, of course, a very bad idea.
@@ -31,22 +32,26 @@ def play(state):
                 if functions.inBounds(state, x - 1, y) and state[x - 1][y] == 'e':
                     valid, message = functions.validPlay(copy.deepcopy(state), False, x - 1, y)
                     if valid and not playIntoAtari(copy.deepcopy(state), x - 1, y):
-                        print "White tries to save"
+                        if mode == 'v':
+                            print "White tries to save"
                         return (x - 1, y)
                 if functions.inBounds(state, x + 1, y) and state[x + 1][y] == 'e':
                     valid, message = functions.validPlay(copy.deepcopy(state), False, x + 1, y)
                     if valid and not playIntoAtari(copy.deepcopy(state), x + 1, y):
-                        print "White tries to save"
+                        if mode == 'v':
+                            print "White tries to save"
                         return (x + 1, y)
                 if functions.inBounds(state, x, y - 1) and state[x][y - 1] == 'e':
                     valid, message = functions.validPlay(copy.deepcopy(state), False, x, y - 1)
                     if valid and not playIntoAtari(copy.deepcopy(state), x, y - 1):
-                        print "White tries to save"
+                        if mode == 'v':
+                            print "White tries to save"
                         return (x, y - 1)
                 if functions.inBounds(state, x, y + 1) and state[x][y + 1] == 'e':
                     valid, message = functions.validPlay(copy.deepcopy(state), False, x, y + 1)
                     if valid and not playIntoAtari(copy.deepcopy(state), x, y + 1):
-                        print "White tries to save"
+                        if mode == 'v':
+                            print "White tries to save"
                         return (x, y + 1)
 
     #check to see if any of black's groups only have 2 liberties. If so, play to set up atari
@@ -57,22 +62,26 @@ def play(state):
                 if functions.inBounds(state, x - 1, y) and state[x - 1][y] == 'e':
                     valid, message = functions.validPlay(copy.deepcopy(state), False, x - 1, y)
                     if valid and not playIntoAtari(copy.deepcopy(state), x - 1, y):
-                        print "White sets up atari"
+                        if mode == 'v':
+                            print "White sets up atari"
                         return (x - 1, y)
                 if functions.inBounds(state, x + 1, y) and state[x + 1][y] == 'e':
                     valid, message = functions.validPlay(copy.deepcopy(state), False, x + 1, y)
                     if valid and not playIntoAtari(copy.deepcopy(state), x + 1, y):
-                        print "White sets up atari"
+                        if mode == 'v':
+                            print "White sets up atari"
                         return (x + 1, y)
                 if functions.inBounds(state, x, y - 1) and state[x][y - 1] == 'e':
                     valid, message = functions.validPlay(copy.deepcopy(state), False, x, y - 1)
                     if valid and not playIntoAtari(copy.deepcopy(state), x, y - 1):
-                        print "White sets up atari"
+                        if mode == 'v':
+                            print "White sets up atari"
                         return (x, y - 1)
                 if functions.inBounds(state, x, y + 1) and state[x][y + 1] == 'e':
                     valid, message = functions.validPlay(copy.deepcopy(state), False, x, y + 1)
                     if valid and not playIntoAtari(copy.deepcopy(state), x, y + 1):
-                        print "White sets up atari"
+                        if mode == 'v':
+                            print "White sets up atari"
                         return (x, y + 1)
 
     #find spot least influenced by anyone that is also at least two from the edge?
@@ -91,7 +100,8 @@ def play(state):
                 cy = y
                 c = abs(infMap[x][y] - 128)
     if cx != -1 and cy != -1:
-        print "White attemps to influence the most neutral area"
+        if mode == 'v':
+            print "White attemps to influence the most neutral area"
         return (cx, cy)
 
     #see which play maximizes the amount of influence we have on the board
@@ -121,7 +131,8 @@ def play(state):
                             by = y
     #calculate an existing influence level first? only play if we improve by a ranodm maount?
     if bx != -1 and by != -1:
-        print "white tries to maximize influence"
+        if mode == 'v':
+            print "white tries to maximize influence"
         return (bx, by)
 
     #play randomly
@@ -140,9 +151,11 @@ def play(state):
     if counter >= size * size * 3:
         # return two -1's to pass. This should be improved.
         # we don't want to only pass when there's nowhere for us to play
-        print "white passes"
+        if mode == 'v':
+            print "white passes"
         return (-1, -1)
-    print "white plays randomly"
+    if mode == 'v':
+        print "white plays randomly"
     return (x, y)
 
 
