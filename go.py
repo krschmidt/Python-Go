@@ -3,6 +3,7 @@
 from Tkinter import *
 import copy
 import math
+import argparse
 
 
 class App():
@@ -732,7 +733,18 @@ class App():
         return True
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-i', action='store_true', dest='show_influence',
+                        default=False, help='Display the influence map')
+    parser.add_argument('-s', type=int, dest='board_size',
+                        choices=(9, 13, 19),
+                        help='Set the board size')
+    results = parser.parse_args()
     root = Tk()
     root.title("Tk Go!")
     myapp = App(root)
+    if results.board_size is not None:
+        myapp.size = results.board_size
+    if results.show_influence:
+        myapp.influence = True
     root.mainloop()
