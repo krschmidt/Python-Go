@@ -15,13 +15,15 @@ def play(state):
     size = len(state[0])
 
     #look for a capture first. This is, of course, a very bad idea.
+    #we actually want to test life and only capture if we must
     x, y = huntForCaptures(copy.deepcopy(state))
     if functions.inBounds(state, x, y):
         print "White will capture"
         return (x, y)
 
     #check to see if any of our pieces are about to die:
-    #also a bad plan
+    #also a bad plan. we need to see if we can create life
+    #and if yes then rescue
     for x in xrange(size):
         for y in xrange(size):
             if state[x][y] == 'w' \
@@ -94,10 +96,7 @@ def play(state):
 
     #see which play maximizes the amount of influence we have on the board
     #three temp variables to keep track of what is best
-
-    #since that'll obviously increase average fitness the most.
-    #maybe if len(stateHistory) < 5 then we should try to maximize our distance from ourselves
-    #while still being at least 2 from the edge?
+    #This whole section seems to be bad news, since we seem keep playing on top of ourselves
     bx = -1
     by = -1
     best = 0
@@ -148,12 +147,20 @@ def play(state):
 
 
 def playIntoAtari(state, x, y):
+    """
+    Returns True if the play at x, y will create atari
+    """
     state[x][y] = 'w'
     if functions.hasLiberties(copy.deepcopy(state), x, y, False) == 1:
         return True
     return False
 
+
 def huntForCaptures(state):
+    """
+    Returns (x,y), the coordinates where could capture
+    or (-1,-1) if it isn't possible to capture
+    """
     global size
 
     for x in xrange(size):
@@ -209,6 +216,7 @@ def huntForCaptures(state):
                     else:
                         state[x][y + 1] = oldValue
     return (-1, -1)
+
 
 def inAnEye(state, x, y):
     """

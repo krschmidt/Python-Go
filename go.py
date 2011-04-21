@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 # TODO support marking dead stones after both players pass
 from functions import *
 from Tkinter import *
@@ -569,12 +570,14 @@ class App():
         return True
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-c', action='store_true', dest='play_computer',
-                        default=False, help='Play the computer (beta)')
-    parser.add_argument('-i', action='store_true', dest='show_influence',
-                        default=False, help='Display the influence map')
-    parser.add_argument('-s', type=int, dest='board_size',
+    parser = argparse.ArgumentParser(description='Go for Python 2.x')
+    parser.add_argument('-c', '--computer', action='store_true',
+                        dest='play_computer', default=False,
+                        help='Play the computer (beta)')
+    parser.add_argument('-i', '--influence', action='store_true',
+                        dest='show_influence', default=False,
+                        help='Display the influence map')
+    parser.add_argument('-s', '--size', type=int, dest='board_size',
                         choices=(9, 13, 19),
                         help='Set the board size')
     results = parser.parse_args()
