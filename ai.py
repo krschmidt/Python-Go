@@ -7,7 +7,8 @@ mode = ''
 
 
 # TODO this doesn't ever seem to take KO into account
-# TODO bug in searching for a rescue if the group is large
+# TODO roll all the little things - playIntoAtari,
+# surroundedByThree - into isStupid function
 def play(state):
     """
     This function receives a board state, and returns a play as a tuple (x,y)
@@ -85,7 +86,7 @@ def play(state):
                             print "White sets up atari"
                         return (x, y + 1)
 
-    #find spot least influenced by anyone that is also at least two from the edge?
+    #find spot least influenced by anyone that is also at least two from the edge
     cx = -1
     cy = -1
     c = 5000
@@ -96,14 +97,21 @@ def play(state):
             valid, message = functions.validPlay(copy.deepcopy(state), False, x, y)
             if valid and abs(infMap[x][y] - 128) < c \
                     and not inAnEye(copy.deepcopy(state), x, y) \
-                    and not playIntoAtari(copy.deepcopy(state), x, y):
+                    and not playIntoAtari(copy.deepcopy(state), x, y) \
+                    and not surroundedByThree(state, x, y):
                 cx = x
                 cy = y
                 c = abs(infMap[x][y] - 128)
+                #set a minimum threshold
+                if c > 30:
+                    cx = -1
+                    cy = -1
     if cx != -1 and cy != -1:
         if mode == 'v':
             print "White attemps to influence the most neutral area"
         return (cx, cy)
+
+    #TODO: check to see if we can hook something up next to the wall
 
     #see which play maximizes the amount of influence we have on the board
     #three temp variables to keep track of what is best
@@ -120,7 +128,9 @@ def play(state):
             elif state[x][y] == 'e':
                 valid, message = functions.validPlay(copy.deepcopy(state), False, x, y)
                 if valid:
-                    if not inAnEye(copy.deepcopy(state), x, y) and not playIntoAtari(copy.deepcopy(state), x, y):
+                    if not inAnEye(copy.deepcopy(state), x, y) \
+                            and not playIntoAtari(copy.deepcopy(state), x, y) \
+                            and not surroundedByThree(state, x, y):
                         backup = copy.deepcopy(state)
                         backup[x][y] = 'w'
                         infMap = functions.getInfluenceMap(backup)
@@ -143,7 +153,8 @@ def play(state):
     counter = 0
     #TODO fix this counter crap. Maintain a list of locations? Remove every play?
     while (not valid or inAnEye(copy.deepcopy(state), x, y) \
-            or playIntoAtari(copy.deepcopy(state), x, y)) \
+            or playIntoAtari(copy.deepcopy(state), x, y) \
+            or surroundedByThree(state, x, y)) \
             and counter < size * size * 3:
         x = random.randint(0, size - 1)
         y = random.randint(0, size - 1)
@@ -254,3 +265,18 @@ def inAnEye(state, x, y):
             inAnEye(state, x + 1, y) and \
             inAnEye(state, x, y - 1) and \
             inAnEye(state, x, y + 1)
+
+
+def surroundedByThree(state, x, y):
+    sides = 0
+    if functions.inBounds(state, x + 1, y) and state[x + 1][y] == 'w':
+        sides += 1
+    if functions.inBounds(state, x - 1, y) and state[x - 1][y] == 'w':
+        sides += 1
+    if functions.inBounds(state, x, y + 1) and state[x][y + 1] == 'w':
+        sides += 1
+    if functions.inBounds(state, x, y - 1) and state[x][y - 1] == 'w':
+        sides += 1
+    if sides >= 3:
+        return True
+    return False
