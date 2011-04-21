@@ -397,15 +397,15 @@ class App():
 
         #redraw board
         self.resize()
+        root.update()
 
         #if it's whites turn, then do ai stuff
         if not self.turn and self.playComputer:
             stateX, stateY = ai.play(copy.deepcopy(self.state))
             if stateX == -1 and stateY == -1:
                 self.playerpass()
-            self.click(None, stateX, stateY)
-#            self.state[stateX][stateY] = 'w'
-#            self.resize()
+            else:
+                self.click(None, stateX, stateY)
 
     def playerpass(self):
         """
